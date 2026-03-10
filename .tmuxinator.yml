@@ -1,0 +1,17 @@
+# /home/pjjimiso/Projects/bootdev/cloud/tmuxinator/cloud.yml
+
+name: cloud
+root: ~/Projects/bootdev/cloud
+
+pre_window: bdshell
+
+windows:
+  - editor:
+      layout: main-vertical
+      panes:
+        - vim
+        - git status
+  - tubely: go run . 
+  - sqlite: nix shell nixpkgs#sqlite3
+  - readme: vim README.md
+  - cc: claude
