@@ -12,6 +12,6 @@ windows:
         - vim
         - git status
   - tubely: go run . 
-  - sqlite: nix shell nixpkgs#sqlite3
+  - sqlite: nix shell nixpkgs#sqlite
   - readme: vim README.md
   - cc: claude
