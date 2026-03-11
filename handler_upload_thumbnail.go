@@ -1,10 +1,12 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -39,12 +41,30 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	file, header, err := r.FormFile("thumbnail")
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Unable to parse form file", err)
+		return
 	}
 	defer file.Close()
 
 	mediaType := header.Header.Get("Content-Type")
-	data, err := io.ReadAll(file)
-	str := base64.StdEncoding.EncodeToString(data)
+	if mediaType == "" {
+		respondWithError(w, http.StatusBadRequest, "Missing Content-Type for thumbnail in header", nil)
+		return
+	}
+
+	parts := strings.Split(mediaType, "/")
+	fileExt := parts[1]
+
+	fileName := fmt.Sprintf("%s.%s", videoID, fileExt)
+	fsFile, err := os.Create(filepath.Join(cfg.assetsRoot, fileName))
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error creating thumbnail file", err)
+	}
+
+	_, err = io.Copy(fsFile, file)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to copy thumbnail data to file", err)
+		return
+	}
 
 	video, err := cfg.db.GetVideo(videoID)
 	if video.UserID != userID {
@@ -52,7 +72,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	url := fmt.Sprintf("data:%s;base64,%s", mediaType, str)
+	url := fmt.Sprintf("http://localhost:%s/assets/%s", cfg.port, fileName)
 
 	video.ThumbnailURL = &url
 	err = cfg.db.UpdateVideo(video)
